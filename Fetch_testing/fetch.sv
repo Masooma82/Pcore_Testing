@@ -110,7 +110,7 @@ always_comb begin
         end
         if_stall              : begin  
             pc_next = pc_ff;
-        end 
+        end
         is_jal                : begin  // MT JAL
             pc_next = pc_ff + jal_imm; // pc_new_jal;
         end
