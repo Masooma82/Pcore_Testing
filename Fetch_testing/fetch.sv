@@ -215,4 +215,3 @@ assign if2id_ctrl_o             = if2id_ctrl;
 assign if2mmu_o                 = if2mmu;
 
 endmodule : fetch
-

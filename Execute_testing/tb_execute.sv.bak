@@ -1,0 +1,160 @@
+`timescale 1ns/1ps
+`include "m_ext_defs.svh"
+`include "pcore_config_defs.svh"
+
+module tb_execute;
+
+  // Parameters
+  localparam XLEN = 32;
+  localparam RF_AWIDTH = 5;
+
+  // Clock and reset
+  logic clk;
+  logic rst_n;
+
+  // Input and output signals
+  type_id2exe_data_s id2exe_data_i;
+  type_id2exe_ctrl_s id2exe_ctrl_i;
+  type_exe2div_s exe2div_o;
+  type_exe2lsu_data_s exe2lsu_data_o;
+  type_exe2lsu_ctrl_s exe2lsu_ctrl_o;
+  type_exe2csr_data_s exe2csr_data_o;
+  type_exe2csr_ctrl_s exe2csr_ctrl_o;
+  type_fwd2exe_s fwd2exe_i;
+  type_exe2fwd_s exe2fwd_o;
+  type_exe2if_fb_s exe2if_fb_o;
+  logic [XLEN-1:0] lsu2exe_fb_alu_result_i;
+  logic [XLEN-1:0] wrb2exe_fb_rd_data_i;
+
+  // Instantiate the execute module
+  execute uut (
+    .rst_n(rst_n),
+    .clk(clk),
+    .id2exe_data_i(id2exe_data_i),
+    .id2exe_ctrl_i(id2exe_ctrl_i),
+    .exe2div_o(exe2div_o),
+    .exe2lsu_data_o(exe2lsu_data_o),
+    .exe2lsu_ctrl_o(exe2lsu_ctrl_o),
+    .exe2csr_data_o(exe2csr_data_o),
+    .exe2csr_ctrl_o(exe2csr_ctrl_o),
+    .fwd2exe_i(fwd2exe_i),
+    .exe2fwd_o(exe2fwd_o),
+    .exe2if_fb_o(exe2if_fb_o),
+    .lsu2exe_fb_alu_result_i(lsu2exe_fb_alu_result_i),
+    .wrb2exe_fb_rd_data_i(wrb2exe_fb_rd_data_i)
+  );
+
+  // Clock generation
+  initial begin
+    clk = 0;
+    forever #5 clk = ~clk;
+  end
+
+
+  // Test stimulus
+  initial begin
+    rst_n = 0;
+    #10;
+    rst_n = 1;
+    id2exe_data_i.exc_code = EXC_CODE_NO_EXCEPTION;
+    id2exe_data_i.instr_flushed = 0;
+    id2exe_ctrl_i.alu_cmp_opr2_sel = ALU_CMP_OPR2_REG;
+    id2exe_ctrl_i.alu_i_ops  = ALU_I_OPS_NONE;
+    id2exe_ctrl_i.alu_m_ops  = ALU_M_OPS_NONE;
+    id2exe_ctrl_i.alu_d_ops  = ALU_D_OPS_NONE;
+    id2exe_ctrl_i.ld_ops     = LD_OPS_NONE;
+    id2exe_ctrl_i.st_ops     = ST_OPS_NONE;
+    id2exe_ctrl_i.branch_ops = BR_OPS_NONE;
+    id2exe_ctrl_i.csr_ops    = CSR_OPS_NONE;
+    id2exe_ctrl_i.amo_ops    = AMO_OPS_NONE;
+    id2exe_ctrl_i.sys_ops    = SYS_OPS_NONE;
+    id2exe_ctrl_i.rd_wrb_sel = RD_WRB_NONE;
+    id2exe_ctrl_i.exc_req     = 1'b0;
+    id2exe_ctrl_i.rd_wr_req   = 1'b0;
+    id2exe_ctrl_i.jump_req    = 1'b0;
+    id2exe_ctrl_i.branch_req  = 1'b0;
+    id2exe_ctrl_i.fence_i_req = 1'b0;
+    id2exe_ctrl_i.fence_req   = 1'b0;
+    id2exe_ctrl_i.irq_req   = 1'b0;
+
+    // Test case 1: Simple ADD operation
+    id2exe_data_i.rs1_data = 32'h00000005;
+    id2exe_data_i.rs2_data = 32'h00000003;
+    id2exe_ctrl_i.alu_i_ops = ALU_I_OPS_ADD;
+    id2exe_ctrl_i.alu_opr1_sel = ALU_OPR1_REG;
+    id2exe_ctrl_i.alu_opr2_sel = ALU_OPR2_REG;
+    id2exe_data_i.pc = 32'h00000000;
+    id2exe_data_i.pc_next = 32'h00000004;
+    #10;
+
+
+    // Test case 2: Load operation
+    id2exe_data_i.rs1_data = 32'h00000020;
+    id2exe_data_i.imm = 32'h00000004;
+    id2exe_ctrl_i.ld_ops = LD_OPS_LW;
+    id2exe_ctrl_i.alu_opr2_sel = ALU_OPR2_IMM;
+    id2exe_data_i.pc = 32'h00000004;
+    id2exe_data_i.pc_next = 32'h00000008;
+
+    #10;
+
+    // Test case 3: Store operation
+    id2exe_data_i.rs1_data = 32'h00000024;
+    id2exe_data_i.rs2_data = 32'h00000004;
+    id2exe_data_i.imm = 32'h00000000;
+    id2exe_ctrl_i.st_ops = ST_OPS_SW;
+    id2exe_ctrl_i.alu_opr2_sel = ALU_OPR2_IMM;
+    id2exe_data_i.pc = 32'h00000008;
+    id2exe_data_i.pc_next = 32'h0000000C;
+
+    #10;
+
+    // Test case 4: Multiply operation
+    id2exe_data_i.rs1_data = 32'h00000002;
+    id2exe_data_i.rs2_data = 32'h00000003;
+    id2exe_ctrl_i.alu_m_ops = ALU_M_OPS_MUL;
+    id2exe_ctrl_i.alu_opr2_sel = ALU_OPR2_REG;
+    id2exe_data_i.pc = 32'h0000000C;
+    id2exe_data_i.pc_next = 32'h00000010;
+    #10;
+
+    // Test case 5: Shift left logical operation
+    id2exe_ctrl_i.alu_m_ops  = ALU_M_OPS_NONE;
+    id2exe_data_i.rs1_data = 32'h00000001;
+    id2exe_data_i.rs2_data = 32'h00000002;
+    id2exe_ctrl_i.alu_i_ops = ALU_I_OPS_SLL;
+    id2exe_data_i.pc = 32'h00000010;
+    id2exe_data_i.pc_next = 32'h00000014;
+    #10;
+
+    // Test case 6: Branch if equal operation
+    id2exe_data_i.rs1_data = 32'h00000005;
+    id2exe_data_i.rs2_data = 32'h00000005;
+    id2exe_ctrl_i.branch_ops = BR_OPS_EQ;
+    id2exe_ctrl_i.branch_req = 1'b1;
+    id2exe_data_i.pc = 32'h00000014;
+    id2exe_data_i.pc_next = 32'h00000018;
+    #10;
+
+    // Test case 7: Set less than operation
+    id2exe_ctrl_i.branch_req = 1'b0;
+    id2exe_data_i.rs1_data = 32'h00000003;
+    id2exe_data_i.rs2_data = 32'h00000004;
+    id2exe_ctrl_i.alu_i_ops = ALU_I_OPS_SLT;
+    id2exe_ctrl_i.alu_opr2_sel = ALU_OPR2_IMM;
+    id2exe_data_i.pc = 32'h00000018;
+    id2exe_data_i.pc_next = 32'h0000001C;
+    #10;
+
+    // Test case 8: CSR write operation
+    id2exe_data_i.rs1_data = 32'h0000000F;
+    id2exe_ctrl_i.csr_ops = CSR_OPS_WRITE;
+    id2exe_data_i.instr[31:20] = 12'hC00; // CSR address
+    id2exe_data_i.pc = 32'h0000001C;
+    id2exe_data_i.instr[11:7] = 32'h00000002;
+    id2exe_data_i.pc_next = 32'h00000020;
+    #10;
+    $stop;
+  end
+
+endmodule

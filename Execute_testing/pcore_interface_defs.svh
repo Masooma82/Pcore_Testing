@@ -168,7 +168,7 @@ typedef struct packed {
     logic [`XLEN-1:0]                instr;
     logic [`XLEN-1:0]                pc;
     logic [`XLEN-1:0]                pc_next;
-    logic [3:0]                      exc_code;
+    type_exc_code_e                  exc_code;
     logic                            instr_flushed;
 } type_if2id_data_s;
 

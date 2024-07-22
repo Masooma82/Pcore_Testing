@@ -1,3 +1,13 @@
+// Copyright 2023 University of Engineering and Technology Lahore.
+// Licensed under the Apache License, Version 2.0, see LICENSE file for details.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Description: The fetch unit responsible for PC generation.
+//
+// Author: Masooma Zia, EE UET LHR
+// Date: 13-07-2024
+
+
 `timescale 1ns / 1ps
 `include "pcore_interface_defs.svh"
 `include "pcore_config_defs.svh"
@@ -44,7 +54,6 @@ module tb_fetch;
         fwd2if_i.csr_new_pc_req=0;
         fwd2if_i.exe_new_pc_req=0;
         fwd2if_i.wfi_req=0;
-        uut.exc_req_ff=0;
         fwd2if_i.if_stall=0;
         mmu2if_i.i_page_fault=0;
         mmu2if_i.i_hit=0;
@@ -61,6 +70,7 @@ module tb_fetch;
 
        // <<<<<--------------------------Exceptions Tests------------------------------>>>>>
         
+        // Test case 1: Address Misalign
         fwd2if_i.if_stall = 0;
         fwd2if_i.csr_new_pc_req = 1;
         csr2if_fb_i.pc_new = 32'h00000002;  // Misaligned PC
@@ -70,21 +80,22 @@ module tb_fetch;
         fwd2if_i.csr_new_pc_req = 1;
         csr2if_fb_i.pc_new = 32'h00000000;
         #20;
-        fwd2if_i.csr_new_pc_req = 0;
-        #10;
 
         // Test case 2: Page fault
         // Assuming a page fault signal is set in the real MMU implementation
         mmu2if_i.i_page_fault = 1;
         #10;
         mmu2if_i.i_page_fault = 0;
-        #10;
+        #20;
 
         // Test case 3: No Exception 
         // even though there is an exception request, the instruction fetch stage is not stalled
         fwd2if_i.if_stall = 0;
-        uut.exc_req_ff = 1;
+        mmu2if_i.i_page_fault = 1;
         #10;
+        mmu2if_i.i_page_fault = 0;
+        #10;
+        
 
        // <<<<<--------------------------Interrupt Test------------------------------>>>>>
 
@@ -102,6 +113,7 @@ module tb_fetch;
         icache2if_i.r_data[6:2] = OPCODE_JAL_INST; // JAL instruction opcode
         icache2if_i.r_data[31:7] = 25'b0000010000100001000100101;
         #10;
+        icache2if_i.r_data[6:2] = `INSTR_NOP;
         
         // Test case 6: New PC request from CSR
         fwd2if_i.csr_new_pc_req = 1; // Set new PC request
@@ -132,12 +144,6 @@ module tb_fetch;
         icache2if_i.ack = 0; // Stall
         #10;
         icache2if_i.ack = 1; // Clear stall
-        #10;
-
-        // Test case 9c: Stall
-        uut.irq_req_ff = 1; // Stall
-        #10;
-        uut.irq_req_ff = 0; // Clear stall
         #10;
 
 
